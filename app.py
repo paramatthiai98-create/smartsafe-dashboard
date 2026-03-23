@@ -5,8 +5,6 @@ from streamlit_autorefresh import st_autorefresh
 from datetime import datetime
 
 st.set_page_config(layout="wide")
-
-# รีเฟรชเหมือนเดิมทุก 2 วินาที
 st_autorefresh(interval=2000, key="datarefresh")
 
 
@@ -52,15 +50,15 @@ def ai_solution(reasons):
 
     if "No helmet detected" in reasons:
         solutions.append("ให้พนักงานสวมหมวกนิรภัยก่อนเข้าพื้นที่ปฏิบัติงาน")
-        solutions.append("ติดตั้งระบบแจ้งเตือนเมื่อไม่พบอุปกรณ์ PPE")
+        solutions.append("ติดตั้งระบบตรวจจับ PPE อัตโนมัติ")
 
     if "Worker too close to machine" in reasons:
         solutions.append("เพิ่มระยะปลอดภัยระหว่างคนงานกับเครื่องจักร")
-        solutions.append("ตีเส้นเขตอันตรายหรือกำหนด safe zone ให้ชัดเจน")
+        solutions.append("กำหนดเขต safe zone ให้ชัดเจน")
 
     if "High machine vibration" in reasons:
         solutions.append("ตรวจสอบการสั่นสะเทือนของเครื่องจักรทันที")
-        solutions.append("หยุดเครื่องเพื่อตรวจเช็กชิ้นส่วนที่อาจหลวม/เสื่อมสภาพ")
+        solutions.append("หยุดเครื่องเพื่อตรวจเช็กความผิดปกติ")
         solutions.append("วางแผนบำรุงรักษาเชิงป้องกัน")
 
     if not solutions:
@@ -71,13 +69,49 @@ def ai_solution(reasons):
 
 st.title("SmartSafe Co-Pilot Dashboard")
 
-# -------------------------
-# Realtime current data
-# -------------------------
 d = generate_data()
 risk, reasons = calculate_risk(d)
 status, action = decision_logic(risk)
 solutions = ai_solution(reasons)
+
+if "history" not in st.session_state:
+    st.session_state.history = []
+
+if "alerts" not in st.session_state:
+    st.session_state.alerts = []
+
+record = {
+    "time": datetime.now().strftime("%H:%M:%S"),
+    "helmet": "YES" if d["helmet"] else "NO",
+    "distance": d["distance"],
+    "vibration": d["vibration"],
+    "temperature": d["temperature"],
+    "risk": risk,
+    "status": status,
+    "action": action,
+    "reasons": ", ".join(reasons) if reasons else "No active risk detected",
+    "solutions": " | ".join(solutions)
+}
+st.session_state.history.append(record)
+
+if len(st.session_state.history) > 100:
+    st.session_state.history = st.session_state.history[-100:]
+
+# บันทึกเฉพาะ alert สำคัญ
+if status in ["WARNING", "HIGH RISK"]:
+    new_alert = {
+        "time": record["time"],
+        "risk": record["risk"],
+        "status": record["status"],
+        "reasons": record["reasons"],
+        "action": record["action"]
+    }
+
+    if len(st.session_state.alerts) == 0 or st.session_state.alerts[-1]["reasons"] != new_alert["reasons"] or st.session_state.alerts[-1]["status"] != new_alert["status"]:
+        st.session_state.alerts.append(new_alert)
+
+if len(st.session_state.alerts) > 20:
+    st.session_state.alerts = st.session_state.alerts[-20:]
 
 col1, col2, col3 = st.columns(3)
 
@@ -102,82 +136,33 @@ with col3:
     else:
         st.success(status)
 
+# กล่องแจ้งเตือนหลัก
+st.subheader("Live Alert")
+
+if status == "HIGH RISK":
+    st.error(f"🚨 HIGH RISK: {', '.join(reasons)}")
+elif status == "WARNING":
+    st.warning(f"⚠️ WARNING: {', '.join(reasons)}")
+else:
+    st.success("✅ SAFE: No active critical risk")
+
 st.subheader("AI Decision Support")
 st.write(f"Recommended Action: **{action}**")
 
-st.subheader("Explainable AI")
-if reasons:
-    for r in reasons:
-        st.write(f"- {r}")
-else:
-    st.write("- No active risk detected")
+st.subheader("AI Recommended Fix")
+for s in solutions:
+    st.write(f"- {s}")
 
-# -------------------------
-# Save realtime history
-# -------------------------
-if "history" not in st.session_state:
-    st.session_state.history = []
-
-record = {
-    "time": datetime.now().strftime("%H:%M:%S"),
-    "helmet": "YES" if d["helmet"] else "NO",
-    "distance": d["distance"],
-    "vibration": d["vibration"],
-    "temperature": d["temperature"],
-    "risk": risk,
-    "status": status,
-    "action": action,
-    "reasons": ", ".join(reasons) if reasons else "No active risk detected",
-    "solutions": " | ".join(solutions)
-}
-
-st.session_state.history.append(record)
-
-# เก็บล่าสุดไม่เกิน 100 จุด
-if len(st.session_state.history) > 100:
-    st.session_state.history = st.session_state.history[-100:]
-
-df = pd.DataFrame(st.session_state.history)
-
-# -------------------------
-# Original style chart
-# -------------------------
 st.subheader("Risk Trend")
+df = pd.DataFrame(st.session_state.history)
+st.line_chart(df[["risk"]], use_container_width=True)
 
-chart_df = df[["risk"]].copy()
-st.line_chart(chart_df, use_container_width=True)
-
-# -------------------------
-# Review past data
-# -------------------------
-st.subheader("Review Past Risk Data")
-
-if len(df) > 0:
-    selected_index = st.selectbox(
-        "เลือกช่วงข้อมูลที่ต้องการย้อนดู",
-        options=list(df.index),
-        index=len(df) - 1,
-        format_func=lambda i: f"{df.loc[i, 'time']} | Risk {df.loc[i, 'risk']} | {df.loc[i, 'status']}"
-    )
-
-    selected_row = df.loc[selected_index]
-
-    detail_col1, detail_col2 = st.columns(2)
-
-    with detail_col1:
-        st.markdown("### Event Details")
-        st.write(f"**Time:** {selected_row['time']}")
-        st.write(f"**Risk Score:** {selected_row['risk']}")
-        st.write(f"**Status:** {selected_row['status']}")
-        st.write(f"**Helmet:** {selected_row['helmet']}")
-        st.write(f"**Distance:** {selected_row['distance']} cm")
-        st.write(f"**Vibration:** {selected_row['vibration']}")
-        st.write(f"**Temperature:** {selected_row['temperature']} °C")
-
-    with detail_col2:
-        st.markdown("### Why Risk Was High")
-        st.write(selected_row["reasons"])
-
-        st.markdown("### AI Recommended Fix")
-        for item in str(selected_row["solutions"]).split(" | "):
-            st.write(f"- {item}")
+st.subheader("Recent Alerts")
+if st.session_state.alerts:
+    for alert in reversed(st.session_state.alerts[-5:]):
+        if alert["status"] == "HIGH RISK":
+            st.error(f"[{alert['time']}] HIGH RISK | Score {alert['risk']} | {alert['reasons']} | Action: {alert['action']}")
+        else:
+            st.warning(f"[{alert['time']}] WARNING | Score {alert['risk']} | {alert['reasons']} | Action: {alert['action']}")
+else:
+    st.info("ยังไม่มีประวัติการแจ้งเตือน")
