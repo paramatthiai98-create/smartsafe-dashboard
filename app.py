@@ -406,6 +406,3 @@ else:
     st.info("ยังไม่มีประวัติการแจ้งเตือน")
 
 st.markdown('</div>', unsafe_allow_html=True)
-.card {
-    border-top: 3px solid #e60012; /* DENSO red */
-}
