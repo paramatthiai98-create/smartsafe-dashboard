@@ -324,7 +324,7 @@ with col3:
     st.markdown('<div class="label">Risk Score</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="big-value">{risk}</div>', unsafe_allow_html=True)
     st.markdown(render_status_chip(status), unsafe_allow_html=True)
-    st.progress(risk / 100)
+    st.progress(min(risk, 100) / 100)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
