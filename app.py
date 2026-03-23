@@ -1,12 +1,15 @@
 import streamlit as st
 import random
 import pandas as pd
+import plotly.express as px
 from streamlit_autorefresh import st_autorefresh
+from streamlit_plotly_events import plotly_events
 from datetime import datetime
 
 st.set_page_config(layout="wide")
 
-st_autorefresh(interval=2000, key="datarefresh")
+# รีเฟรชทุก 10 นาที
+st_autorefresh(interval=600000, key="datarefresh")
 
 
 def generate_data():
@@ -108,18 +111,14 @@ if reasons:
 else:
     st.write("- No active risk detected")
 
-st.subheader("AI Suggested Solutions")
-for s in solutions:
-    st.write(f"- {s}")
-
 # -------------------------
-# เก็บ history แบบละเอียด
+# เก็บ history
 # -------------------------
 if "history" not in st.session_state:
     st.session_state.history = []
 
 record = {
-    "time": datetime.now().strftime("%H:%M:%S"),
+    "time": datetime.now().strftime("%H:%M"),
     "helmet": "YES" if d["helmet"] else "NO",
     "distance": d["distance"],
     "vibration": d["vibration"],
@@ -133,70 +132,89 @@ record = {
 
 st.session_state.history.append(record)
 
-# จำกัดจำนวน record เพื่อไม่ให้ยาวเกิน
 if len(st.session_state.history) > 100:
     st.session_state.history = st.session_state.history[-100:]
 
-df = pd.DataFrame(st.session_state.history)
+df = pd.DataFrame(st.session_state.history).reset_index(drop=True)
+df["point_id"] = df.index
 
 # -------------------------
-# กราฟ
+# ปุ่มกรอง
 # -------------------------
-st.subheader("Risk Trend")
-st.line_chart(df.set_index("time")["risk"])
-
-# -------------------------
-# ตารางย้อนหลัง
-# -------------------------
-st.subheader("Risk History Table")
-st.dataframe(
-    df[["time", "risk", "status", "helmet", "distance", "vibration", "reasons", "action"]],
-    use_container_width=True
+filter_option = st.radio(
+    "Select status to view",
+    ["ALL", "SAFE", "WARNING", "HIGH RISK"],
+    horizontal=True
 )
 
-# -------------------------
-# เลือกดูรายละเอียดแต่ละจุด
-# -------------------------
-st.subheader("Inspect Past Risk Event")
-
-selected_index = st.selectbox(
-    "Select record to inspect",
-    options=df.index,
-    format_func=lambda x: f"{df.loc[x, 'time']} | Risk {df.loc[x, 'risk']} | {df.loc[x, 'status']}"
-)
-
-selected_row = df.loc[selected_index]
-
-detail_col1, detail_col2 = st.columns(2)
-
-with detail_col1:
-    st.markdown("### Event Details")
-    st.write(f"**Time:** {selected_row['time']}")
-    st.write(f"**Risk Score:** {selected_row['risk']}")
-    st.write(f"**Status:** {selected_row['status']}")
-    st.write(f"**Helmet:** {selected_row['helmet']}")
-    st.write(f"**Distance:** {selected_row['distance']} cm")
-    st.write(f"**Vibration:** {selected_row['vibration']}")
-    st.write(f"**Temperature:** {selected_row['temperature']} °C")
-
-with detail_col2:
-    st.markdown("### Why Risk Was High")
-    st.write(selected_row["reasons"])
-
-    st.markdown("### AI Recommended Fix")
-    for item in str(selected_row["solutions"]).split(" | "):
-        st.write(f"- {item}")
-
-# -------------------------
-# กรองเฉพาะช่วงเสี่ยงสูง
-# -------------------------
-st.subheader("High Risk Events Only")
-high_risk_df = df[df["risk"] >= 50]
-
-if not high_risk_df.empty:
-    st.dataframe(
-        high_risk_df[["time", "risk", "status", "reasons", "action"]],
-        use_container_width=True
-    )
+if filter_option == "ALL":
+    filtered_df = df.copy()
 else:
-    st.info("ยังไม่มีเหตุการณ์ที่เสี่ยงสูง")
+    filtered_df = df[df["status"] == filter_option].copy()
+
+# -------------------------
+# กราฟคลิกได้
+# -------------------------
+st.subheader("Risk Trend by Level")
+
+if not filtered_df.empty:
+    fig = px.line(
+        filtered_df,
+        x="point_id",
+        y="risk",
+        markers=True,
+        color="status",
+        hover_data=["time", "helmet", "distance", "vibration", "temperature", "reasons", "action"],
+        color_discrete_map={
+            "SAFE": "green",
+            "WARNING": "gold",
+            "HIGH RISK": "red"
+        }
+    )
+
+    fig.update_traces(marker=dict(size=10))
+    fig.update_layout(
+        xaxis_title="Record",
+        yaxis_title="Risk Score",
+        legend_title="Risk Level",
+        template="plotly_dark",
+        height=450
+    )
+
+    selected_points = plotly_events(
+        fig,
+        click_event=True,
+        hover_event=False,
+        select_event=False,
+        override_height=450,
+        key="risk_chart"
+    )
+
+    # แสดงเฉพาะจุดที่คลิก
+    if selected_points:
+        selected_x = selected_points[0]["x"]
+        selected_row = filtered_df[filtered_df["point_id"] == selected_x].iloc[0]
+
+        st.subheader("Selected Risk Event")
+
+        detail_col1, detail_col2 = st.columns(2)
+
+        with detail_col1:
+            st.markdown("### Event Details")
+            st.write(f"**Time:** {selected_row['time']}")
+            st.write(f"**Risk Score:** {selected_row['risk']}")
+            st.write(f"**Status:** {selected_row['status']}")
+            st.write(f"**Helmet:** {selected_row['helmet']}")
+            st.write(f"**Distance:** {selected_row['distance']} cm")
+            st.write(f"**Vibration:** {selected_row['vibration']}")
+            st.write(f"**Temperature:** {selected_row['temperature']} °C")
+
+        with detail_col2:
+            st.markdown("### Why Risk Was This Level")
+            st.write(selected_row["reasons"])
+
+            st.markdown("### AI Recommended Fix")
+            for item in str(selected_row["solutions"]).split(" | "):
+                st.write(f"- {item}")
+else:
+    st.info("ไม่มีข้อมูลตามสถานะที่เลือก")
