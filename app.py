@@ -17,7 +17,7 @@ st_autorefresh(interval=2000, key="datarefresh")
 st.markdown("""
 <style>
 .stApp {
-    background: linear-gradient(180deg, #07111f 0%, #0b1728 100%);
+    background: linear-gradient(180deg, #03101f 0%, #06172b 100%);
     color: #f8fafc;
 }
 .block-container {
@@ -26,79 +26,92 @@ st.markdown("""
     padding-bottom: 1rem;
 }
 .main-title {
-    font-size: 2.2rem;
+    font-size: 2.35rem;
     font-weight: 800;
     color: #ffffff;
-    margin-bottom: 0.2rem;
+    margin-bottom: 0.15rem;
 }
 .sub-title {
-    color: #9ca3af;
-    margin-bottom: 1.2rem;
-    font-size: 1rem;
+    color: #b6c2cf;
+    margin-bottom: 1.3rem;
+    font-size: 1.02rem;
 }
 .card {
-    background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(9,18,32,0.98));
+    background: linear-gradient(180deg, rgba(7,20,40,0.98), rgba(5,17,34,0.98));
     border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 20px;
-    padding: 18px;
-    min-height: 150px;
-    margin-bottom: 14px;
+    border-radius: 22px;
+    padding: 22px;
+    min-height: 255px;
+    margin-bottom: 16px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.02) inset;
 }
 .card-title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #f8fafc;
-    margin-bottom: 0.8rem;
+    font-size: 1.55rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 1.2rem;
+}
+.label {
+    font-size: 0.96rem;
+    color: #9fb0c3;
+    margin-bottom: 0.25rem;
 }
 .big-value {
-    font-size: 2.3rem;
+    font-size: 2.55rem;
     font-weight: 800;
     color: #ffffff;
     line-height: 1.1;
-    margin-bottom: 0.4rem;
+    margin-bottom: 1rem;
+}
+.big-sub-value {
+    font-size: 2.05rem;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.15;
+    margin-bottom: 0.9rem;
 }
 .info-line {
     font-size: 1rem;
     color: #e5e7eb;
-    margin: 0.35rem 0;
+    margin: 0.38rem 0;
 }
 .panel {
-    background: rgba(10, 19, 34, 0.96);
+    background: rgba(8, 20, 38, 0.97);
     border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 20px;
-    padding: 18px;
+    border-radius: 22px;
+    padding: 18px 20px;
     margin-bottom: 16px;
 }
 .section-title {
-    font-size: 1.35rem;
-    font-weight: 700;
+    font-size: 1.38rem;
+    font-weight: 800;
     color: #ffffff;
-    margin-bottom: 0.8rem;
+    margin-bottom: 0.9rem;
 }
 .alert-main {
-    border-radius: 20px;
+    border-radius: 18px;
     padding: 18px 20px;
     font-weight: 700;
-    font-size: 1.15rem;
+    font-size: 1.08rem;
     border: 1px solid rgba(255,255,255,0.08);
     margin-bottom: 16px;
 }
 .alert-safe {
-    background: rgba(22,163,74,0.15);
+    background: rgba(22,163,74,0.16);
     color: #bbf7d0;
 }
 .alert-warning {
-    background: rgba(245,158,11,0.15);
+    background: rgba(245,158,11,0.18);
     color: #fde68a;
 }
 .alert-risk {
-    background: rgba(239,68,68,0.16);
+    background: rgba(239,68,68,0.18);
     color: #fecaca;
 }
 .fix-box {
-    background: rgba(59,130,246,0.10);
-    border: 1px solid rgba(59,130,246,0.25);
-    border-radius: 18px;
+    background: rgba(59,130,246,0.12);
+    border: 1px solid rgba(59,130,246,0.28);
+    border-radius: 16px;
     padding: 14px 16px;
     margin-bottom: 10px;
     color: #dbeafe;
@@ -107,52 +120,51 @@ st.markdown("""
 .small-alert {
     border-radius: 14px;
     padding: 12px 14px;
-    font-size: 0.96rem;
+    font-size: 0.98rem;
     margin-bottom: 10px;
     border: 1px solid rgba(255,255,255,0.08);
 }
 .small-warning {
-    background: rgba(245,158,11,0.10);
+    background: rgba(245,158,11,0.12);
     color: #fde68a;
 }
 .small-risk {
-    background: rgba(239,68,68,0.12);
+    background: rgba(239,68,68,0.14);
     color: #fecaca;
 }
 .status-chip {
     display: inline-block;
-    padding: 6px 12px;
+    padding: 8px 14px;
     border-radius: 999px;
-    font-size: 0.82rem;
-    font-weight: 700;
+    font-size: 0.84rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
 }
 .status-safe {
-    background: rgba(22,163,74,0.15);
+    background: rgba(22,163,74,0.18);
     color: #86efac;
-    border: 1px solid rgba(22,163,74,0.30);
+    border: 1px solid rgba(22,163,74,0.32);
 }
 .status-warning {
-    background: rgba(245,158,11,0.15);
+    background: rgba(245,158,11,0.18);
     color: #fcd34d;
-    border: 1px solid rgba(245,158,11,0.30);
+    border: 1px solid rgba(245,158,11,0.32);
 }
 .status-risk {
-    background: rgba(239,68,68,0.15);
+    background: rgba(239,68,68,0.18);
     color: #fca5a5;
-    border: 1px solid rgba(239,68,68,0.30);
+    border: 1px solid rgba(239,68,68,0.32);
 }
-hr {
-    border: none;
-    height: 1px;
-    background: rgba(255,255,255,0.08);
-    margin: 16px 0;
+div[data-testid="stMetric"] {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
-
 # -------------------------
-# DATA / LOGIC (คงเดิม)
+# DATA / LOGIC
 # -------------------------
 def generate_data():
     return {
@@ -271,7 +283,6 @@ if status in ["WARNING", "HIGH RISK"]:
 if len(st.session_state.alerts) > 20:
     st.session_state.alerts = st.session_state.alerts[-20:]
 
-
 # -------------------------
 # HEADER
 # -------------------------
@@ -279,32 +290,43 @@ st.markdown('<div class="main-title">SmartSafe Co-Pilot Dashboard</div>', unsafe
 st.markdown('<div class="sub-title">Worker safety monitoring and machine risk awareness</div>', unsafe_allow_html=True)
 
 # -------------------------
-# MAIN STATUS CARDS
+# TOP KPI CARDS
 # -------------------------
 col1, col2, col3 = st.columns(3, gap="large")
 
 with col1:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="card-title">Worker Status</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="label">Helmet</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="big-value">{"YES" if d["helmet"] else "NO"}</div>', unsafe_allow_html=True)
-    st.markdown('<div class="info-line">Helmet</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="info-line">Distance: <b>{d["distance"]} cm</b></div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="label">Distance</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="big-sub-value">{d["distance"]} cm</div>', unsafe_allow_html=True)
+
     st.markdown('</div>', unsafe_allow_html=True)
 
 with col2:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="card-title">Machine Status</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="label">Vibration</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="big-value">{d["vibration"]}</div>', unsafe_allow_html=True)
-    st.markdown('<div class="info-line">Vibration</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="info-line">Temperature: <b>{d["temperature"]} °C</b></div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="label">Temperature</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="big-sub-value">{d["temperature"]} °C</div>', unsafe_allow_html=True)
+
     st.markdown('</div>', unsafe_allow_html=True)
 
 with col3:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="card-title">Risk Analysis</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="label">Risk Score</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="big-value">{risk}</div>', unsafe_allow_html=True)
     st.markdown(render_status_chip(status), unsafe_allow_html=True)
     st.progress(risk / 100)
+
     st.markdown('</div>', unsafe_allow_html=True)
 
 # -------------------------
@@ -338,7 +360,7 @@ with left:
     st.markdown('<div class="section-title">AI Decision Support</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="info-line">Recommended Action: <b>{action}</b></div>', unsafe_allow_html=True)
 
-    st.markdown('<hr>', unsafe_allow_html=True)
+    st.markdown('<div style="height:12px;"></div>', unsafe_allow_html=True)
     st.markdown('<div class="section-title">Explainable AI</div>', unsafe_allow_html=True)
     if reasons:
         for r in reasons:
