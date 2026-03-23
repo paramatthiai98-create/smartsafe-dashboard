@@ -1,172 +1,222 @@
+import streamlit as st
 import random
+import pandas as pd
+from streamlit_autorefresh import st_autorefresh
 from datetime import datetime
 
-import pandas as pd
-import streamlit as st
-from streamlit_autorefresh import st_autorefresh
-
 st.set_page_config(
-    page_title="SmartSafe DENSO Production Dashboard",
+    page_title="SmartSafe Co-Pilot Dashboard",
     layout="wide"
 )
 
-# รีเฟรชทุก 2 วินาที
 st_autorefresh(interval=2000, key="datarefresh")
 
 # -------------------------
-# CONFIG
+# STYLE
 # -------------------------
-LINE_CONFIG = {
-    "Line 1": {
-        "name": "Sensor Assembly",
-        "description": "Temperature / Pressure / Oxygen Sensor Assembly Line"
-    },
-    "Line 2": {
-        "name": "ECU Production",
-        "description": "Electronic Control Unit and PCB Assembly Line"
-    },
-    "Line 3": {
-        "name": "Fuel Injector",
-        "description": "Fuel System / Injector Precision Manufacturing Line"
-    },
-    "Line 4": {
-        "name": "EV Components",
-        "description": "Battery / Motor / Power Electronics Assembly Line"
-    }
+st.markdown("""
+<style>
+.stApp {
+    background: linear-gradient(180deg, #03101f 0%, #06172b 100%);
+    color: #f8fafc;
 }
-
-MAX_HISTORY = 100
-MAX_ALERTS = 20
-
+.block-container {
+    max-width: 96rem;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+.main-title {
+    font-size: 2.35rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 0.15rem;
+}
+.sub-title {
+    color: #b6c2cf;
+    margin-bottom: 1.3rem;
+    font-size: 1.02rem;
+}
+.card {
+    background: linear-gradient(180deg, rgba(7,20,40,0.98), rgba(5,17,34,0.98));
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 22px;
+    padding: 22px;
+    margin-bottom: 16px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.02) inset;
+}
+.card-title {
+    font-size: 1.55rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 1.2rem;
+}
+.label {
+    font-size: 0.96rem;
+    color: #9fb0c3;
+    margin-bottom: 0.25rem;
+}
+.big-value {
+    font-size: 2.55rem;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1.1;
+    margin-bottom: 1rem;
+}
+.big-sub-value {
+    font-size: 2.05rem;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.15;
+    margin-bottom: 0.9rem;
+}
+.info-line {
+    font-size: 1rem;
+    color: #e5e7eb;
+    margin: 0.38rem 0;
+}
+.panel {
+    background: rgba(8, 20, 38, 0.97);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 22px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+}
+.section-title {
+    font-size: 1.38rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 0.9rem;
+}
+.alert-main {
+    border-radius: 18px;
+    padding: 18px 20px;
+    font-weight: 700;
+    font-size: 1.08rem;
+    border: 1px solid rgba(255,255,255,0.08);
+    margin-bottom: 16px;
+}
+.alert-safe {
+    background: rgba(22,163,74,0.16);
+    color: #bbf7d0;
+}
+.alert-warning {
+    background: rgba(245,158,11,0.18);
+    color: #fde68a;
+}
+.alert-risk {
+    background: rgba(239,68,68,0.18);
+    color: #fecaca;
+}
+.fix-box {
+    background: rgba(59,130,246,0.12);
+    border: 1px solid rgba(59,130,246,0.28);
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    color: #dbeafe;
+    font-size: 1rem;
+}
+.small-alert {
+    border-radius: 14px;
+    padding: 12px 14px;
+    font-size: 0.98rem;
+    margin-bottom: 10px;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+.small-warning {
+    background: rgba(245,158,11,0.12);
+    color: #fde68a;
+}
+.small-risk {
+    background: rgba(239,68,68,0.14);
+    color: #fecaca;
+}
+.status-chip {
+    display: inline-block;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 0.84rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+}
+.status-safe {
+    background: rgba(22,163,74,0.18);
+    color: #86efac;
+    border: 1px solid rgba(22,163,74,0.32);
+}
+.status-warning {
+    background: rgba(245,158,11,0.18);
+    color: #fcd34d;
+    border: 1px solid rgba(245,158,11,0.32);
+}
+.status-risk {
+    background: rgba(239,68,68,0.18);
+    color: #fca5a5;
+    border: 1px solid rgba(239,68,68,0.32);
+}
+div[data-testid="stMetric"] {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # -------------------------
-# SAFETY HELPERS
+# DATA / LOGIC
 # -------------------------
-def clamp_risk(value: int | float) -> int:
-    """Clamp risk score to 0..100 and return int."""
-    try:
-        value = int(round(float(value)))
-    except Exception:
-        return 0
-    return max(0, min(value, 100))
-
-
-def progress_value_from_risk(risk: int | float) -> float:
-    """Convert risk to safe 0.0..1.0 for st.progress."""
-    return clamp_risk(risk) / 100.0
-
-
-def safe_append_limited(items: list, value, max_len: int) -> None:
-    items.append(value)
-    if len(items) > max_len:
-        del items[:-max_len]
-
-
-# -------------------------
-# DATA GENERATION
-# -------------------------
-def generate_data_by_line(line_key: str) -> dict:
-    if line_key == "Line 1":
-        return {
-            "helmet": random.choice([True, False]),
-            "distance": random.randint(15, 80),
-            "vibration": random.randint(10, 60),
-            "temperature": random.randint(25, 45)
-        }
-    if line_key == "Line 2":
-        return {
-            "helmet": random.choice([True, False]),
-            "distance": random.randint(20, 90),
-            "vibration": random.randint(5, 40),
-            "temperature": random.randint(30, 65)
-        }
-    if line_key == "Line 3":
-        return {
-            "helmet": random.choice([True, False]),
-            "distance": random.randint(10, 70),
-            "vibration": random.randint(25, 90),
-            "temperature": random.randint(28, 55)
-        }
+def generate_data():
     return {
         "helmet": random.choice([True, False]),
-        "distance": random.randint(15, 85),
-        "vibration": random.randint(10, 75),
-        "temperature": random.randint(35, 80)
+        "distance": random.randint(10, 100),
+        "vibration": random.randint(0, 100),
+        "temperature": random.randint(25, 80)
     }
 
 
-def calculate_risk_by_line(d: dict, line_key: str) -> tuple[int, list[str]]:
+def calculate_risk(d):
     risk = 0
-    reasons: list[str] = []
+    reasons = []
 
-    if not d.get("helmet", True):
-        risk += 40 if line_key == "Line 4" else 30
+    if not d["helmet"]:
+        risk += 30
         reasons.append("No helmet detected")
 
-    if d.get("distance", 999) < 30:
-        risk += 45 if line_key == "Line 3" else 40
+    if d["distance"] < 30:
+        risk += 40
         reasons.append("Worker too close to machine")
 
-    if d.get("vibration", 0) > 70:
-        risk += 45 if line_key == "Line 3" else 35
+    if d["vibration"] > 70:
+        risk += 35
         reasons.append("High machine vibration")
 
-    if d.get("temperature", 0) > 60:
-        if line_key in ["Line 2", "Line 4"]:
-            risk += 35
-            reasons.append("High operating temperature")
-        elif d["temperature"] > 70:
-            risk += 20
-            reasons.append("High operating temperature")
-
-    return clamp_risk(risk), reasons
+    return risk, reasons
 
 
-def decision_logic(risk: int) -> tuple[str, str]:
-    risk = clamp_risk(risk)
+def decision_logic(risk):
     if risk > 80:
         return "HIGH RISK", "STOP MACHINE"
-    if risk > 50:
+    elif risk > 50:
         return "WARNING", "CHECK SYSTEM"
-    return "SAFE", "NORMAL OPERATION"
+    else:
+        return "SAFE", "NORMAL OPERATION"
 
 
-def ai_solution_by_line(reasons: list[str], line_key: str) -> list[str]:
-    solutions: list[str] = []
+def ai_solution(reasons):
+    solutions = []
 
     if "No helmet detected" in reasons:
         solutions.append("ให้พนักงานสวมหมวกนิรภัยก่อนเข้าพื้นที่ปฏิบัติงาน")
-        if line_key == "Line 1":
-            solutions.append("เพิ่มจุดตรวจ PPE ก่อนเข้าพื้นที่ประกอบเซนเซอร์")
-        elif line_key == "Line 4":
-            solutions.append("เพิ่มมาตรการ PPE เข้มงวดในพื้นที่ EV / High Voltage")
-        else:
-            solutions.append("ติดตั้งระบบตรวจจับ PPE อัตโนมัติ")
+        solutions.append("ติดตั้งระบบตรวจจับ PPE อัตโนมัติ")
 
     if "Worker too close to machine" in reasons:
-        if line_key == "Line 3":
-            solutions.append("เพิ่มระยะปลอดภัยจากเครื่องจักรความเร็วสูงในไลน์หัวฉีด")
-        else:
-            solutions.append("เพิ่มระยะปลอดภัยระหว่างคนงานกับเครื่องจักร")
+        solutions.append("เพิ่มระยะปลอดภัยระหว่างคนงานกับเครื่องจักร")
         solutions.append("กำหนดเขต safe zone ให้ชัดเจน")
 
     if "High machine vibration" in reasons:
-        if line_key == "Line 3":
-            solutions.append("ตรวจสอบเครื่องจักร precision machining และ fixture ทันที")
-        else:
-            solutions.append("ตรวจสอบการสั่นสะเทือนของเครื่องจักรทันที")
+        solutions.append("ตรวจสอบการสั่นสะเทือนของเครื่องจักรทันที")
         solutions.append("หยุดเครื่องเพื่อตรวจเช็กความผิดปกติ")
         solutions.append("วางแผนบำรุงรักษาเชิงป้องกัน")
-
-    if "High operating temperature" in reasons:
-        if line_key == "Line 2":
-            solutions.append("ตรวจสอบระบบระบายความร้อนใน ECU/PCB line")
-            solutions.append("ควบคุมอุณหภูมิพื้นที่ผลิตอิเล็กทรอนิกส์")
-        elif line_key == "Line 4":
-            solutions.append("ตรวจสอบอุณหภูมิในพื้นที่ EV Components ทันที")
-            solutions.append("แยกพื้นที่ความร้อนสูงและเพิ่มระบบระบายอากาศ")
-        else:
-            solutions.append("ตรวจสอบอุณหภูมิการทำงานของอุปกรณ์")
 
     if not solutions:
         solutions.append("ระบบอยู่ในเกณฑ์ปกติ ให้ติดตามต่อเนื่อง")
@@ -174,245 +224,185 @@ def ai_solution_by_line(reasons: list[str], line_key: str) -> list[str]:
     return solutions
 
 
-# -------------------------
-# RENDER HELPERS
-# -------------------------
-def render_status_box(status: str) -> None:
-    if status == "SAFE":
-        st.success(status)
-    elif status == "WARNING":
-        st.warning(status)
-    else:
-        st.error(status)
-
-
-def render_live_alert(line_key: str, status: str, reasons: list[str]) -> None:
+def render_status_chip(status):
     if status == "HIGH RISK":
-        st.error(f"🚨 {line_key}: HIGH RISK - {', '.join(reasons)}")
+        return '<span class="status-chip status-risk">HIGH RISK</span>'
     elif status == "WARNING":
-        st.warning(f"⚠️ {line_key}: WARNING - {', '.join(reasons)}")
-    else:
-        st.success(f"✅ {line_key}: SAFE - No active critical risk")
+        return '<span class="status-chip status-warning">WARNING</span>'
+    return '<span class="status-chip status-safe">SAFE</span>'
 
 
 # -------------------------
-# SESSION STATE
+# CURRENT DATA
 # -------------------------
-if "line_history" not in st.session_state:
-    st.session_state.line_history = {line: [] for line in LINE_CONFIG.keys()}
+d = generate_data()
+risk, reasons = calculate_risk(d)
+status, action = decision_logic(risk)
+solutions = ai_solution(reasons)
 
-if "line_alerts" not in st.session_state:
-    st.session_state.line_alerts = {line: [] for line in LINE_CONFIG.keys()}
+if "history" not in st.session_state:
+    st.session_state.history = []
 
+if "alerts" not in st.session_state:
+    st.session_state.alerts = []
 
-# -------------------------
-# GENERATE CURRENT DATA
-# -------------------------
-current_line_data: dict[str, dict] = {}
+record = {
+    "time": datetime.now().strftime("%H:%M:%S"),
+    "helmet": "YES" if d["helmet"] else "NO",
+    "distance": d["distance"],
+    "vibration": d["vibration"],
+    "temperature": d["temperature"],
+    "risk": risk,
+    "status": status,
+    "action": action,
+    "reasons": ", ".join(reasons) if reasons else "No active risk detected",
+    "solutions": " | ".join(solutions)
+}
+st.session_state.history.append(record)
 
-for line_key in LINE_CONFIG.keys():
-    d = generate_data_by_line(line_key)
-    risk, reasons = calculate_risk_by_line(d, line_key)
-    risk = clamp_risk(risk)
-    status, action = decision_logic(risk)
-    solutions = ai_solution_by_line(reasons, line_key)
+if len(st.session_state.history) > 100:
+    st.session_state.history = st.session_state.history[-100:]
 
-    record = {
-        "time": datetime.now().strftime("%H:%M:%S"),
-        "helmet": "YES" if d["helmet"] else "NO",
-        "distance": d["distance"],
-        "vibration": d["vibration"],
-        "temperature": d["temperature"],
-        "risk": risk,
-        "status": status,
-        "action": action,
-        "reasons": ", ".join(reasons) if reasons else "No active risk detected",
-        "solutions": " | ".join(solutions)
+if status in ["WARNING", "HIGH RISK"]:
+    new_alert = {
+        "time": record["time"],
+        "risk": record["risk"],
+        "status": record["status"],
+        "reasons": record["reasons"],
+        "action": record["action"]
     }
 
-    safe_append_limited(st.session_state.line_history[line_key], record, MAX_HISTORY)
+    if (
+        len(st.session_state.alerts) == 0
+        or st.session_state.alerts[-1]["reasons"] != new_alert["reasons"]
+        or st.session_state.alerts[-1]["status"] != new_alert["status"]
+    ):
+        st.session_state.alerts.append(new_alert)
 
-    if status in ["WARNING", "HIGH RISK"]:
-        new_alert = {
-            "time": record["time"],
-            "risk": record["risk"],
-            "status": record["status"],
-            "reasons": record["reasons"],
-            "action": record["action"]
-        }
-
-        alert_history = st.session_state.line_alerts[line_key]
-        should_append = (
-            len(alert_history) == 0
-            or alert_history[-1]["reasons"] != new_alert["reasons"]
-            or alert_history[-1]["status"] != new_alert["status"]
-        )
-        if should_append:
-            safe_append_limited(alert_history, new_alert, MAX_ALERTS)
-
-    current_line_data[line_key] = {
-        "data": d,
-        "risk": risk,
-        "reasons": reasons,
-        "status": status,
-        "action": action,
-        "solutions": solutions
-    }
-
+if len(st.session_state.alerts) > 20:
+    st.session_state.alerts = st.session_state.alerts[-20:]
 
 # -------------------------
 # HEADER
 # -------------------------
-st.title("SmartSafe Co-Pilot Dashboard")
-st.caption("DENSO-style production safety monitoring across 4 lines")
-
-
-# -------------------------
-# OVERVIEW
-# -------------------------
-st.subheader("Overview")
-
-overview_cols = st.columns(4, gap="medium")
-
-for i, line_key in enumerate(LINE_CONFIG.keys()):
-    with overview_cols[i]:
-        line_info = LINE_CONFIG[line_key]
-        line_now = current_line_data[line_key]
-        d = line_now["data"]
-
-        with st.container(border=True):
-            left, right = st.columns([2, 1])
-            with left:
-                st.markdown(f"**{line_key}**")
-                st.write(line_info["name"])
-            with right:
-                st.metric("Risk", line_now["risk"])
-
-            st.caption(line_info["description"])
-
-            c1, c2 = st.columns(2)
-            c1.write(f"Helmet: {'YES' if d['helmet'] else 'NO'}")
-            c2.write(f"Temp: {d['temperature']} °C")
-
-            render_status_box(line_now["status"])
-
+st.markdown('<div class="main-title">SmartSafe Co-Pilot Dashboard</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title">Worker safety monitoring and machine risk awareness</div>', unsafe_allow_html=True)
 
 # -------------------------
-# TABS
+# TOP KPI CARDS
 # -------------------------
-tab_names = ["Overview All"] + list(LINE_CONFIG.keys())
-tabs = st.tabs(tab_names)
+col1, col2, col3 = st.columns(3, gap="large")
 
-with tabs[0]:
-    st.subheader("All Production Lines Summary")
+with col1:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="card-title">Worker Status</div>', unsafe_allow_html=True)
 
-    summary_rows = []
-    for line_key, line_info in LINE_CONFIG.items():
-        line_now = current_line_data[line_key]
-        d = line_now["data"]
-        summary_rows.append({
-            "Line": line_key,
-            "Process": line_info["name"],
-            "Helmet": "YES" if d["helmet"] else "NO",
-            "Distance (cm)": d["distance"],
-            "Vibration": d["vibration"],
-            "Temperature (°C)": d["temperature"],
-            "Risk": line_now["risk"],
-            "Status": line_now["status"],
-            "Action": line_now["action"]
-        })
+    st.markdown('<div class="label">Helmet</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="big-value">{"YES" if d["helmet"] else "NO"}</div>', unsafe_allow_html=True)
 
-    summary_df = pd.DataFrame(summary_rows)
-    st.dataframe(summary_df, use_container_width=True, hide_index=True)
+    st.markdown('<div class="label">Distance</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="big-sub-value">{d["distance"]} cm</div>', unsafe_allow_html=True)
 
-    st.subheader("Risk Comparison")
-    risk_compare = pd.DataFrame({
-        "Line": list(LINE_CONFIG.keys()),
-        "Risk Score": [clamp_risk(current_line_data[line]["risk"]) for line in LINE_CONFIG.keys()]
-    }).set_index("Line")
-    st.line_chart(risk_compare, use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-for idx, line_key in enumerate(LINE_CONFIG.keys(), start=1):
-    with tabs[idx]:
-        line_info = LINE_CONFIG[line_key]
-        line_now = current_line_data[line_key]
-        d = line_now["data"]
-        risk = clamp_risk(line_now["risk"])
-        reasons = line_now["reasons"]
-        status = line_now["status"]
-        action = line_now["action"]
-        solutions = line_now["solutions"]
+with col2:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="card-title">Machine Status</div>', unsafe_allow_html=True)
 
-        st.subheader(f"{line_key} - {line_info['name']}")
-        st.caption(line_info["description"])
+    st.markdown('<div class="label">Vibration</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="big-value">{d["vibration"]}</div>', unsafe_allow_html=True)
 
-        col1, col2, col3 = st.columns(3, gap="large")
+    st.markdown('<div class="label">Temperature</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="big-sub-value">{d["temperature"]} °C</div>', unsafe_allow_html=True)
 
-        with col1:
-            with st.container(border=True):
-                st.markdown("### Worker Status")
-                st.metric("Helmet", "YES" if d["helmet"] else "NO")
-                st.metric("Distance", f"{d['distance']} cm")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-        with col2:
-            with st.container(border=True):
-                st.markdown("### Machine Status")
-                st.metric("Vibration", d["vibration"])
-                st.metric("Temperature", f"{d['temperature']} °C")
+with col3:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="card-title">Risk Analysis</div>', unsafe_allow_html=True)
 
-        with col3:
-            with st.container(border=True):
-                st.markdown("### Risk Analysis")
-                st.metric("Risk Score", risk)
-                render_status_box(status)
-                st.progress(progress_value_from_risk(risk))
+    st.markdown('<div class="label">Risk Score</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="big-value">{risk}</div>', unsafe_allow_html=True)
+    st.markdown(render_status_chip(status), unsafe_allow_html=True)
+    st.progress(risk / 100)
 
-        st.subheader("Live Alert")
-        render_live_alert(line_key, status, reasons)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-        left, right = st.columns([1, 1.15], gap="large")
+# -------------------------
+# LIVE ALERT
+# -------------------------
+st.markdown('<div class="section-title">Live Alert</div>', unsafe_allow_html=True)
 
-        with left:
-            with st.container(border=True):
-                st.markdown("### AI Decision Support")
-                st.write(f"Recommended Action: **{action}**")
+if status == "HIGH RISK":
+    st.markdown(
+        f'<div class="alert-main alert-risk">🚨 HIGH RISK: {", ".join(reasons)}</div>',
+        unsafe_allow_html=True
+    )
+elif status == "WARNING":
+    st.markdown(
+        f'<div class="alert-main alert-warning">⚠️ WARNING: {", ".join(reasons)}</div>',
+        unsafe_allow_html=True
+    )
+else:
+    st.markdown(
+        '<div class="alert-main alert-safe">✅ SAFE: No active critical risk</div>',
+        unsafe_allow_html=True
+    )
 
-                st.markdown("### Explainable AI")
-                if reasons:
-                    for r in reasons:
-                        st.write(f"- {r}")
-                else:
-                    st.write("- No active risk detected")
+# -------------------------
+# AI DECISION + FIX
+# -------------------------
+left, right = st.columns([1, 1.15], gap="large")
 
-        with right:
-            with st.container(border=True):
-                st.markdown("### AI Recommended Fix")
-                for s in solutions:
-                    st.info(s)
+with left:
+    st.markdown('<div class="panel">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">AI Decision Support</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="info-line">Recommended Action: <b>{action}</b></div>', unsafe_allow_html=True)
 
-        with st.container(border=True):
-            st.markdown("### Risk Trend")
-            df = pd.DataFrame(st.session_state.line_history[line_key])
+    st.markdown('<div style="height:12px;"></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Explainable AI</div>', unsafe_allow_html=True)
+    if reasons:
+        for r in reasons:
+            st.markdown(f'<div class="info-line">• {r}</div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="info-line">• No active risk detected</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-            if "risk" in df.columns and not df.empty:
-                df["risk"] = df["risk"].apply(clamp_risk)
-                st.line_chart(df[["risk"]], use_container_width=True)
-            else:
-                st.info("ยังไม่มีข้อมูลกราฟ")
+with right:
+    st.markdown('<div class="panel">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">AI Recommended Fix</div>', unsafe_allow_html=True)
+    for s in solutions:
+        st.markdown(f'<div class="fix-box">• {s}</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-        with st.container(border=True):
-            st.markdown("### Recent Alerts")
-            if st.session_state.line_alerts[line_key]:
-                for alert in reversed(st.session_state.line_alerts[line_key][-5:]):
-                    safe_risk = clamp_risk(alert["risk"])
-                    msg = (
-                        f"[{alert['time']}] {alert['status']} | "
-                        f"Score {safe_risk} | {alert['reasons']} | "
-                        f"Action: {alert['action']}"
-                    )
-                    if alert["status"] == "HIGH RISK":
-                        st.error(msg)
-                    else:
-                        st.warning(msg)
-            else:
-                st.info("ยังไม่มีประวัติการแจ้งเตือน")
+# -------------------------
+# RISK TREND
+# -------------------------
+st.markdown('<div class="panel">', unsafe_allow_html=True)
+st.markdown('<div class="section-title">Risk Trend</div>', unsafe_allow_html=True)
+df = pd.DataFrame(st.session_state.history)
+st.line_chart(df[["risk"]], use_container_width=True)
+st.markdown('</div>', unsafe_allow_html=True)
+
+# -------------------------
+# RECENT ALERTS
+# -------------------------
+st.markdown('<div class="panel">', unsafe_allow_html=True)
+st.markdown('<div class="section-title">Recent Alerts</div>', unsafe_allow_html=True)
+
+if st.session_state.alerts:
+    for alert in reversed(st.session_state.alerts[-5:]):
+        if alert["status"] == "HIGH RISK":
+            st.markdown(
+                f'<div class="small-alert small-risk">[{alert["time"]}] HIGH RISK | Score {alert["risk"]} | {alert["reasons"]} | Action: {alert["action"]}</div>',
+                unsafe_allow_html=True
+            )
+        else:
+            st.markdown(
+                f'<div class="small-alert small-warning">[{alert["time"]}] WARNING | Score {alert["risk"]} | {alert["reasons"]} | Action: {alert["action"]}</div>',
+                unsafe_allow_html=True
+            )
+else:
+    st.info("ยังไม่มีประวัติการแจ้งเตือน")
+
+st.markdown('</div>', unsafe_allow_html=True)
