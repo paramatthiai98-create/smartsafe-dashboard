@@ -207,6 +207,7 @@ def ai_solution(reasons):
 
     if "No helmet detected" in reasons:
         solutions.append("ให้พนักงานสวมหมวกนิรภัยก่อนเข้าพื้นที่ปฏิบัติงาน")
+        solutions.append("ติดตั้งระบบตรวจจับ PPE อัตโนมัติ")
 
     if "Worker too close to machine" in reasons:
         solutions.append("เพิ่มระยะปลอดภัยระหว่างคนงานกับเครื่องจักร")
@@ -234,14 +235,16 @@ def render_status_chip(status):
 # -------------------------
 # CURRENT DATA
 # -------------------------
-if demo_mode:
-    risk = clamp_risk(fixed_risk[line_key])
-    reasons, solutions = demo_reason_and_solution_by_risk(risk, line_key)
-else:
-    risk = calc_risk
-    solutions = ai_solution_by_line(reasons, line_key)
-
+d = generate_data()
+risk, reasons = calculate_risk(d)
 status, action = decision_logic(risk)
+solutions = ai_solution(reasons)
+
+if "history" not in st.session_state:
+    st.session_state.history = []
+
+if "alerts" not in st.session_state:
+    st.session_state.alerts = []
 
 record = {
     "time": datetime.now().strftime("%H:%M:%S"),
@@ -249,7 +252,7 @@ record = {
     "distance": d["distance"],
     "vibration": d["vibration"],
     "temperature": d["temperature"],
-    "risk": clamp_risk(risk),
+    "risk": risk,
     "status": status,
     "action": action,
     "reasons": ", ".join(reasons) if reasons else "No active risk detected",
@@ -321,7 +324,7 @@ with col3:
     st.markdown('<div class="label">Risk Score</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="big-value">{risk}</div>', unsafe_allow_html=True)
     st.markdown(render_status_chip(status), unsafe_allow_html=True)
-    st.progress(min(risk, 100) / 100)
+    st.progress(risk / 100)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
