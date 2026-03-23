@@ -41,7 +41,6 @@ st.markdown("""
     border: 1px solid rgba(255,255,255,0.08);
     border-radius: 22px;
     padding: 22px;
-    min-height: 255px;
     margin-bottom: 16px;
     box-shadow: 0 0 0 1px rgba(255,255,255,0.02) inset;
 }
