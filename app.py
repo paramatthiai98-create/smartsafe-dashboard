@@ -234,16 +234,14 @@ def render_status_chip(status):
 # -------------------------
 # CURRENT DATA
 # -------------------------
-d = generate_data()
-risk, reasons = calculate_risk(d)
+if demo_mode:
+    risk = clamp_risk(fixed_risk[line_key])
+    reasons, solutions = demo_reason_and_solution_by_risk(risk, line_key)
+else:
+    risk = calc_risk
+    solutions = ai_solution_by_line(reasons, line_key)
+
 status, action = decision_logic(risk)
-solutions = ai_solution(reasons)
-
-if "history" not in st.session_state:
-    st.session_state.history = []
-
-if "alerts" not in st.session_state:
-    st.session_state.alerts = []
 
 record = {
     "time": datetime.now().strftime("%H:%M:%S"),
@@ -251,11 +249,12 @@ record = {
     "distance": d["distance"],
     "vibration": d["vibration"],
     "temperature": d["temperature"],
-    "risk": risk,
+    "risk": clamp_risk(risk),
     "status": status,
     "action": action,
     "reasons": ", ".join(reasons) if reasons else "No active risk detected",
     "solutions": " | ".join(solutions)
+}
 }
 st.session_state.history.append(record)
 
