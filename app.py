@@ -1,9 +1,7 @@
 import streamlit as st
 import random
 import pandas as pd
-import plotly.express as px
 from streamlit_autorefresh import st_autorefresh
-from streamlit_plotly_events import plotly_events
 from datetime import datetime
 
 st.set_page_config(layout="wide")
@@ -71,22 +69,16 @@ def ai_solution(reasons):
     return solutions
 
 
-# -----------------------------
-# Header
-# -----------------------------
 st.title("SmartSafe Co-Pilot Dashboard")
 
-# -----------------------------
-# Generate current realtime data
-# -----------------------------
+# -------------------------
+# Realtime current data
+# -------------------------
 d = generate_data()
 risk, reasons = calculate_risk(d)
 status, action = decision_logic(risk)
 solutions = ai_solution(reasons)
 
-# -----------------------------
-# Top cards
-# -----------------------------
 col1, col2, col3 = st.columns(3)
 
 with col1:
@@ -120,9 +112,9 @@ if reasons:
 else:
     st.write("- No active risk detected")
 
-# -----------------------------
+# -------------------------
 # Save realtime history
-# -----------------------------
+# -------------------------
 if "history" not in st.session_state:
     st.session_state.history = []
 
@@ -141,58 +133,34 @@ record = {
 
 st.session_state.history.append(record)
 
-# จำกัดจำนวนข้อมูลย้อนหลัง
-if len(st.session_state.history) > 150:
-    st.session_state.history = st.session_state.history[-150:]
+# เก็บล่าสุดไม่เกิน 100 จุด
+if len(st.session_state.history) > 100:
+    st.session_state.history = st.session_state.history[-100:]
 
-df = pd.DataFrame(st.session_state.history).reset_index(drop=True)
-df["point_id"] = df.index
+df = pd.DataFrame(st.session_state.history)
 
-# -----------------------------
-# Interactive chart
-# -----------------------------
+# -------------------------
+# Original style chart
+# -------------------------
 st.subheader("Risk Trend")
 
-fig = px.line(
-    df,
-    x="point_id",
-    y="risk",
-    markers=True,
-    hover_data=["time", "status", "helmet", "distance", "vibration", "temperature"],
-    color="status",
-    color_discrete_map={
-        "SAFE": "green",
-        "WARNING": "gold",
-        "HIGH RISK": "red"
-    }
-)
+chart_df = df[["risk"]].copy()
+st.line_chart(chart_df, use_container_width=True)
 
-fig.update_traces(line=dict(width=2), marker=dict(size=9))
-fig.update_layout(
-    template="plotly_dark",
-    xaxis_title="Record",
-    yaxis_title="Risk Score",
-    legend_title="Level",
-    height=420
-)
+# -------------------------
+# Review past data
+# -------------------------
+st.subheader("Review Past Risk Data")
 
-selected_points = plotly_events(
-    fig,
-    click_event=True,
-    hover_event=False,
-    select_event=False,
-    override_height=420,
-    key="risk_chart_click"
-)
+if len(df) > 0:
+    selected_index = st.selectbox(
+        "เลือกช่วงข้อมูลที่ต้องการย้อนดู",
+        options=list(df.index),
+        index=len(df) - 1,
+        format_func=lambda i: f"{df.loc[i, 'time']} | Risk {df.loc[i, 'risk']} | {df.loc[i, 'status']}"
+    )
 
-# -----------------------------
-# Show only selected point detail
-# -----------------------------
-if selected_points:
-    selected_x = selected_points[0]["x"]
-    selected_row = df[df["point_id"] == selected_x].iloc[0]
-
-    st.subheader("Selected Risk Event")
+    selected_row = df.loc[selected_index]
 
     detail_col1, detail_col2 = st.columns(2)
 
@@ -207,7 +175,7 @@ if selected_points:
         st.write(f"**Temperature:** {selected_row['temperature']} °C")
 
     with detail_col2:
-        st.markdown("### Why Was Risk High?")
+        st.markdown("### Why Risk Was High")
         st.write(selected_row["reasons"])
 
         st.markdown("### AI Recommended Fix")
