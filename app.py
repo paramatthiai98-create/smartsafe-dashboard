@@ -255,7 +255,6 @@ record = {
     "reasons": ", ".join(reasons) if reasons else "No active risk detected",
     "solutions": " | ".join(solutions)
 }
-}
 st.session_state.history.append(record)
 
 if len(st.session_state.history) > 100:
