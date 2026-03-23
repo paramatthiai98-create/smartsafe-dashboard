@@ -207,7 +207,6 @@ def ai_solution(reasons):
 
     if "No helmet detected" in reasons:
         solutions.append("ให้พนักงานสวมหมวกนิรภัยก่อนเข้าพื้นที่ปฏิบัติงาน")
-        solutions.append("ติดตั้งระบบตรวจจับ PPE อัตโนมัติ")
 
     if "Worker too close to machine" in reasons:
         solutions.append("เพิ่มระยะปลอดภัยระหว่างคนงานกับเครื่องจักร")
@@ -324,7 +323,7 @@ with col3:
     st.markdown('<div class="label">Risk Score</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="big-value">{risk}</div>', unsafe_allow_html=True)
     st.markdown(render_status_chip(status), unsafe_allow_html=True)
-    st.progress(risk / 100)
+    st.progress(min(risk, 100) / 100)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
