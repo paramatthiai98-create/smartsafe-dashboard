@@ -1,9 +1,12 @@
 import streamlit as st
-import random
 import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 from datetime import datetime
+import random
 
+# -------------------------
+# PAGE CONFIG
+# -------------------------
 st.set_page_config(
     page_title="SmartSafe: AI Decision Support System for Factory Safety",
     layout="wide"
@@ -154,255 +157,279 @@ st.markdown("""
     color: #fca5a5;
     border: 1px solid rgba(239,68,68,0.32);
 }
-div[data-testid="stMetric"] {
-    background: transparent !important;
-    border: none !important;
-    padding: 0 !important;
+.ai-box {
+    border-radius: 18px;
+    padding: 18px 20px;
+    border: 1px solid rgba(255,255,255,0.08);
+    margin-bottom: 14px;
+    font-size: 1.02rem;
+    font-weight: 700;
+}
+.ai-box-safe {
+    background: rgba(22,163,74,0.14);
+    border: 1px solid rgba(22,163,74,0.30);
+    color: #bbf7d0;
+}
+.ai-box-warning {
+    background: rgba(245,158,11,0.16);
+    border: 1px solid rgba(245,158,11,0.32);
+    color: #fde68a;
+}
+.ai-box-risk {
+    background: rgba(239,68,68,0.16);
+    border: 1px solid rgba(239,68,68,0.32);
+    color: #fecaca;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # -------------------------
-# DATA / LOGIC
+# FUNCTIONS
 # -------------------------
 def generate_data():
+    helmet = random.choice([True, False])
+    distance = random.randint(10, 100)
+    vibration = random.randint(0, 100)
+    temperature = random.randint(28, 65)
     return {
-        "helmet": random.choice([True, False]),
-        "distance": random.randint(10, 100),
-        "vibration": random.randint(0, 100),
-        "temperature": random.randint(25, 80)
+        "helmet": helmet,
+        "distance": distance,
+        "vibration": vibration,
+        "temperature": temperature
     }
 
-
-def calculate_risk(d):
+def calculate_risk(data):
     risk = 0
     reasons = []
 
-    if not d["helmet"]:
+    if not data["helmet"]:
         risk += 30
         reasons.append("No helmet detected")
 
-    if d["distance"] < 30:
+    if data["distance"] < 30:
         risk += 40
         reasons.append("Worker too close to machine")
 
-    if d["vibration"] > 70:
+    if data["vibration"] > 70:
         risk += 35
         reasons.append("High machine vibration")
 
     return risk, reasons
 
-
 def decision_logic(risk):
     if risk > 80:
-        return "HIGH RISK", "STOP MACHINE"
+        return "HIGH RISK", "STOP MACHINE IMMEDIATELY"
     elif risk > 50:
-        return "WARNING", "CHECK SYSTEM"
+        return "WARNING", "CHECK SYSTEM AND REDUCE EXPOSURE"
     else:
         return "SAFE", "NORMAL OPERATION"
 
-
 def ai_solution(reasons):
     solutions = []
-
     if "No helmet detected" in reasons:
-        solutions.append("ให้พนักงานสวมหมวกนิรภัยก่อนเข้าพื้นที่ปฏิบัติงาน")
-        solutions.append("ติดตั้งระบบตรวจจับ PPE อัตโนมัติ")
-
+        solutions.append("Provide PPE alert and require worker to wear a safety helmet before continuing operation.")
     if "Worker too close to machine" in reasons:
-        solutions.append("เพิ่มระยะปลอดภัยระหว่างคนงานกับเครื่องจักร")
-        solutions.append("กำหนดเขต safe zone ให้ชัดเจน")
-
+        solutions.append("Increase safety distance and reposition worker outside the restricted machine zone.")
     if "High machine vibration" in reasons:
-        solutions.append("ตรวจสอบการสั่นสะเทือนของเครื่องจักรทันที")
-        solutions.append("หยุดเครื่องเพื่อตรวจเช็กความผิดปกติ")
-        solutions.append("วางแผนบำรุงรักษาเชิงป้องกัน")
-
+        solutions.append("Inspect machine condition, reduce load, and perform maintenance to lower abnormal vibration.")
     if not solutions:
-        solutions.append("ระบบอยู่ในเกณฑ์ปกติ ให้ติดตามต่อเนื่อง")
-
+        solutions.append("No immediate corrective action required. Continue monitoring in real time.")
     return solutions
 
+def demo_data_from_risk(risk_target):
+    mapping = {
+        0:   {"helmet": True,  "distance": 60, "vibration": 40, "temperature": 32},
+        30:  {"helmet": False, "distance": 60, "vibration": 40, "temperature": 34},
+        35:  {"helmet": True,  "distance": 60, "vibration": 85, "temperature": 48},
+        40:  {"helmet": True,  "distance": 20, "vibration": 40, "temperature": 36},
+        65:  {"helmet": False, "distance": 60, "vibration": 85, "temperature": 50},
+        70:  {"helmet": False, "distance": 20, "vibration": 40, "temperature": 38},
+        75:  {"helmet": True,  "distance": 20, "vibration": 85, "temperature": 52},
+        105: {"helmet": False, "distance": 20, "vibration": 85, "temperature": 56},
+    }
+    return mapping[risk_target]
 
-def render_status_chip(status):
+def get_status_chip_class(status):
     if status == "HIGH RISK":
-        return '<span class="status-chip status-risk">HIGH RISK</span>'
+        return "status-chip status-risk"
     elif status == "WARNING":
-        return '<span class="status-chip status-warning">WARNING</span>'
-    return '<span class="status-chip status-safe">SAFE</span>'
+        return "status-chip status-warning"
+    return "status-chip status-safe"
 
+def get_alert_class(status):
+    if status == "HIGH RISK":
+        return "alert-main alert-risk"
+    elif status == "WARNING":
+        return "alert-main alert-warning"
+    return "alert-main alert-safe"
+
+def decision_box_class(status):
+    if status == "HIGH RISK":
+        return "ai-box ai-box-risk"
+    elif status == "WARNING":
+        return "ai-box ai-box-warning"
+    return "ai-box ai-box-safe"
+
+# -------------------------
+# SESSION STATE
+# -------------------------
+if "history" not in st.session_state:
+    st.session_state.history = []
+
+# -------------------------
+# SIDEBAR
+# -------------------------
+st.sidebar.header("Demo Control")
+
+demo_mode = st.sidebar.toggle("Enable Demo Mode", value=True)
+risk_options = [0, 30, 35, 40, 65, 70, 75, 105]
+
+risk_target = st.sidebar.select_slider(
+    "Risk Score",
+    options=risk_options,
+    value=70,
+    disabled=not demo_mode
+)
 
 # -------------------------
 # CURRENT DATA
 # -------------------------
-d = generate_data()
+if demo_mode:
+    d = demo_data_from_risk(risk_target)
+else:
+    d = generate_data()
+
 risk, reasons = calculate_risk(d)
 status, action = decision_logic(risk)
 solutions = ai_solution(reasons)
 
-if "history" not in st.session_state:
-    st.session_state.history = []
+# Sidebar info
+st.sidebar.markdown("### Current Inputs")
+st.sidebar.write(f"Helmet: {'YES' if d['helmet'] else 'NO'}")
+st.sidebar.write(f"Distance: {d['distance']} cm")
+st.sidebar.write(f"Vibration: {d['vibration']}")
+st.sidebar.write(f"Temperature: {d['temperature']} °C")
+st.sidebar.write(f"Status: {status}")
 
-if "alerts" not in st.session_state:
-    st.session_state.alerts = []
-
-record = {
+# -------------------------
+# STORE HISTORY
+# -------------------------
+st.session_state.history.append({
     "time": datetime.now().strftime("%H:%M:%S"),
-    "helmet": "YES" if d["helmet"] else "NO",
-    "distance": d["distance"],
-    "vibration": d["vibration"],
-    "temperature": d["temperature"],
-    "risk": risk,
-    "status": status,
-    "action": action,
-    "reasons": ", ".join(reasons) if reasons else "No active risk detected",
-    "solutions": " | ".join(solutions)
-}
-st.session_state.history.append(record)
+    "risk": risk
+})
 
-if len(st.session_state.history) > 100:
-    st.session_state.history = st.session_state.history[-100:]
+if len(st.session_state.history) > 30:
+    st.session_state.history = st.session_state.history[-30:]
 
-if status in ["WARNING", "HIGH RISK"]:
-    new_alert = {
-        "time": record["time"],
-        "risk": record["risk"],
-        "status": record["status"],
-        "reasons": record["reasons"],
-        "action": record["action"]
-    }
-
-    if (
-        len(st.session_state.alerts) == 0
-        or st.session_state.alerts[-1]["reasons"] != new_alert["reasons"]
-        or st.session_state.alerts[-1]["status"] != new_alert["status"]
-    ):
-        st.session_state.alerts.append(new_alert)
-
-if len(st.session_state.alerts) > 20:
-    st.session_state.alerts = st.session_state.alerts[-20:]
+df = pd.DataFrame(st.session_state.history)
 
 # -------------------------
 # HEADER
 # -------------------------
 st.markdown('<div class="main-title">SmartSafe: AI Decision Support System for Factory Safety</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">Worker safety monitoring and machine risk awareness</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title">Real-time safety analytics for worker protection, machine monitoring, and explainable AI recommendations.</div>', unsafe_allow_html=True)
 
 # -------------------------
-# TOP KPI CARDS
+# TOP CARDS
 # -------------------------
-col1, col2, col3 = st.columns(3, gap="large")
+col1, col2, col3 = st.columns(3)
 
 with col1:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="card-title">Worker Status</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="label">Helmet</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="big-value">{"YES" if d["helmet"] else "NO"}</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="label">Distance</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="big-sub-value">{d["distance"]} cm</div>', unsafe_allow_html=True)
-
+    st.markdown(f'<div class="{get_status_chip_class(status)}">{status}</div>', unsafe_allow_html=True)
+    st.markdown('<div class="label">HELMET STATUS</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="big-sub-value">{"YES" if d["helmet"] else "NO"}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="info-line">Distance from machine: <b>{d["distance"]} cm</b></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 with col2:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="card-title">Machine Status</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="label">Vibration</div>', unsafe_allow_html=True)
+    st.markdown('<div class="label">VIBRATION LEVEL</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="big-value">{d["vibration"]}</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="label">Temperature</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="big-sub-value">{d["temperature"]} °C</div>', unsafe_allow_html=True)
-
+    st.markdown(f'<div class="info-line">Temperature: <b>{d["temperature"]} °C</b></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 with col3:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="card-title">Risk Analysis</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="label">Risk Score</div>', unsafe_allow_html=True)
+    st.markdown('<div class="label">RISK SCORE</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="big-value">{risk}</div>', unsafe_allow_html=True)
-    st.markdown(render_status_chip(status), unsafe_allow_html=True)
-    st.progress(min(risk, 100) / 100)
-
+    st.markdown(f'<div class="{get_alert_class(status)}">{status}</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 # -------------------------
-# LIVE ALERT
+# MAIN PANELS
 # -------------------------
-st.markdown('<div class="section-title">Live Alert</div>', unsafe_allow_html=True)
-
-if status == "HIGH RISK":
-    st.markdown(
-        f'<div class="alert-main alert-risk">🚨 HIGH RISK: {", ".join(reasons)}</div>',
-        unsafe_allow_html=True
-    )
-elif status == "WARNING":
-    st.markdown(
-        f'<div class="alert-main alert-warning">⚠️ WARNING: {", ".join(reasons)}</div>',
-        unsafe_allow_html=True
-    )
-else:
-    st.markdown(
-        '<div class="alert-main alert-safe">✅ SAFE: No active critical risk</div>',
-        unsafe_allow_html=True
-    )
-
-# -------------------------
-# AI DECISION + FIX
-# -------------------------
-left, right = st.columns([1, 1.15], gap="large")
+left, right = st.columns([1.15, 1])
 
 with left:
     st.markdown('<div class="panel">', unsafe_allow_html=True)
     st.markdown('<div class="section-title">AI Decision Support</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="info-line">Recommended Action: <b>{action}</b></div>', unsafe_allow_html=True)
 
-    st.markdown('<div style="height:12px;"></div>', unsafe_allow_html=True)
+    st.markdown(
+        f'''
+        <div class="{decision_box_class(status)}">
+            Recommended Action: <b>{action}</b><br>
+            Current Status: <b>{status}</b><br>
+            Risk Score: <b>{risk}</b>
+        </div>
+        ''',
+        unsafe_allow_html=True
+    )
+
     st.markdown('<div class="section-title">Explainable AI</div>', unsafe_allow_html=True)
     if reasons:
         for r in reasons:
             st.markdown(f'<div class="info-line">• {r}</div>', unsafe_allow_html=True)
     else:
         st.markdown('<div class="info-line">• No active risk detected</div>', unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="panel">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">AI Recommended Fix</div>', unsafe_allow_html=True)
+    for sol in solutions:
+        st.markdown(f'<div class="fix-box">{sol}</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 with right:
     st.markdown('<div class="panel">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">AI Recommended Fix</div>', unsafe_allow_html=True)
-    for s in solutions:
-        st.markdown(f'<div class="fix-box">• {s}</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Risk Trend</div>', unsafe_allow_html=True)
+    chart_df = df[["time", "risk"]].set_index("time")
+    st.line_chart(chart_df)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="panel">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Active Alerts</div>', unsafe_allow_html=True)
+
+    if status == "HIGH RISK":
+        st.markdown('<div class="small-alert small-risk">Critical condition detected. Immediate intervention required.</div>', unsafe_allow_html=True)
+    elif status == "WARNING":
+        st.markdown('<div class="small-alert small-warning">Warning condition detected. Operator should inspect the process.</div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="small-alert" style="background: rgba(22,163,74,0.10); color:#bbf7d0;">System operating within normal safety conditions.</div>', unsafe_allow_html=True)
+
+    if not d["helmet"]:
+        st.markdown('<div class="small-alert small-risk">PPE violation: Worker is not wearing a helmet.</div>', unsafe_allow_html=True)
+
+    if d["distance"] < 30:
+        st.markdown('<div class="small-alert small-warning">Unsafe distance: Worker is too close to machine.</div>', unsafe_allow_html=True)
+
+    if d["vibration"] > 70:
+        st.markdown('<div class="small-alert small-warning">Machine vibration exceeded safe threshold.</div>', unsafe_allow_html=True)
+
+    if d["helmet"] and d["distance"] >= 30 and d["vibration"] <= 70:
+        st.markdown('<div class="small-alert" style="background: rgba(22,163,74,0.10); color:#bbf7d0;">No active alert in current cycle.</div>', unsafe_allow_html=True)
+
     st.markdown('</div>', unsafe_allow_html=True)
 
 # -------------------------
-# RISK TREND
+# FOOTER DATA TABLE
 # -------------------------
 st.markdown('<div class="panel">', unsafe_allow_html=True)
-st.markdown('<div class="section-title">Risk Trend</div>', unsafe_allow_html=True)
-df = pd.DataFrame(st.session_state.history)
-st.line_chart(df[["risk"]], use_container_width=True)
-st.markdown('</div>', unsafe_allow_html=True)
-
-# -------------------------
-# RECENT ALERTS
-# -------------------------
-st.markdown('<div class="panel">', unsafe_allow_html=True)
-st.markdown('<div class="section-title">Recent Alerts</div>', unsafe_allow_html=True)
-
-if st.session_state.alerts:
-    for alert in reversed(st.session_state.alerts[-5:]):
-        if alert["status"] == "HIGH RISK":
-            st.markdown(
-                f'<div class="small-alert small-risk">[{alert["time"]}] HIGH RISK | Score {alert["risk"]} | {alert["reasons"]} | Action: {alert["action"]}</div>',
-                unsafe_allow_html=True
-            )
-        else:
-            st.markdown(
-                f'<div class="small-alert small-warning">[{alert["time"]}] WARNING | Score {alert["risk"]} | {alert["reasons"]} | Action: {alert["action"]}</div>',
-                unsafe_allow_html=True
-            )
-else:
-    st.info("ยังไม่มีประวัติการแจ้งเตือน")
-
+st.markdown('<div class="section-title">Recent Risk History</div>', unsafe_allow_html=True)
+st.dataframe(df.iloc[::-1], use_container_width=True)
 st.markdown('</div>', unsafe_allow_html=True)
