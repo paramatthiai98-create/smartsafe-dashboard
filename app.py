@@ -285,7 +285,7 @@ if len(st.session_state.alerts) > 20:
 # -------------------------
 # HEADER
 # -------------------------
-st.markdown('<div class="main-title">SmartSafe Co-Pilot Dashboard</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">SmartSafe: AI Decision Support System for Factory Safety</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-title">Worker safety monitoring and machine risk awareness</div>', unsafe_allow_html=True)
 
 # -------------------------
