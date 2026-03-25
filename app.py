@@ -5,7 +5,7 @@ from streamlit_autorefresh import st_autorefresh
 from datetime import datetime
 
 st.set_page_config(
-    page_title="SmartSafe Co-Pilot Dashboard",
+    page_title="SmartSafe: AI Decision Support System for Factory Safety",
     layout="wide"
 )
 
